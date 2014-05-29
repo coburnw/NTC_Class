@@ -19,7 +19,7 @@ def CtoK(n):
 a=Ntc(3470,10,CtoK(25))
 
 #confirm the values
-print(a)
+print a
 
 #Do some calculations to compare measured and calculated values for
 #R=8K and T=300K
