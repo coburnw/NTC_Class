@@ -59,11 +59,7 @@ class Ntc(object):
     
     def Rlin(self,T_hi=343,T_lo=298):
         """Calculates a suitable linearization resistor based on an input
-           temperature interval. Returns two resistor values:
-           R_lin_model is
-           based on a modeled Thermistor based on the input values when the object was
-           instantiated. Otherwise there may still be some differences
-           between the two resistors"""
+           temperature interval."""
 
         T_hi=float(T_hi)
         T_lo=float(T_lo)
@@ -72,15 +68,15 @@ class Ntc(object):
         T_mid=(T_hi+T_lo)/2
 
         #Get corresponding resistor values for the modeled Thermistor
-        R_hi=self.TtoR_calc(T_hi)
-        R_mid=self.TtoR_calc(T_mid)
-        R_lo=self.TtoR_calc(T_lo)
+        R_hi=self.TtoR(T_hi)
+        R_mid=self.TtoR(T_mid)
+        R_lo=self.TtoR(T_lo)
         
         #Calculate Rlin for the modeled Thermistor
-        R_lin_model=(R_mid*(R_lo+R_hi)-2*R_lo*R_hi)/(R_lo+R_hi-(2*R_mid))
+        R_lin=(R_mid*(R_lo+R_hi)-2*R_lo*R_hi)/(R_lo+R_hi-(2*R_mid))
         
 
-        return R_lin_model
+        return R_lin
 
 
     def measurement(self, Rlin=2, Rs=2.2, Vs=5, Vadc=2):
@@ -113,15 +109,28 @@ class Ntc(object):
         R_ntc=Vadc/i_ntc
 
         #Temperature based on the modeled Thermistor
-        Temp_mod=self.RtoT_calc(R_ntc)
+        Temp=self.RtoT(R_ntc)
 
-        return Temp_meas,Temp_mod
+        return Temp
         
     
-if __name__=="__main__":
-    print """This is an NTC Thermistor library.
-You are supposed to import it and create Thermistor objects"""
+if __name__ == "__main__":
 
+    print 'modeled thermister'
+    a = Ntc(B=3435, Rn=10, Tn=273+25)
+    print ' R=27.348K(0C) = {} C'.format(a.RtoT(27.348) - 273)
+    print ' R=22.108K(5C) = {} C'.format(a.RtoT(22.108) - 273)
+    print ' R=10.000K(25C) = {} C'.format(a.RtoT(10.0) - 273)
+    print ' R=4.1583K(50C) = {} C'.format(a.RtoT(4.1583) - 273)
 
-    
+    tmin = 10
+    tmax = 50
+    rlin_opt = a.Rlin(T_hi=273+tmax,T_lo=273+tmin)
+    print ' {} to {} C range, optimal linearity resistor = {}K'.format(tmin, tmax, rlin_opt)
+    rlin = 5.8
+    rs = 5.8
+    print ' Vadc:1.3V = {} C'.format(a.measurement(Rlin=rlin, Rs=rs, Vs=3.3, Vadc=1.3) - 273)
+    print ' Vadc:1.1V = {} C'.format(a.measurement(Rlin=rlin, Rs=rs, Vs=3.3, Vadc=1.1) - 273)
+    print ' Vadc:0.8V = {} C'.format(a.measurement(Rlin=rlin, Rs=rs, Vs=3.3, Vadc=0.8) - 273)
+
 

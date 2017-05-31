@@ -7,28 +7,47 @@ import math
 from scipy import interpolate
 
 
+#Define resistance vs. temperature arrays for the interpolate function
+#X should always be ascending (apparently not)
+# todo: investigate if ascending/decending returns the same results...
+
+# from Vishay NTCLE413 Datasheet
+B3435_const = {'resistance' : [0.85833, 0.97426, 1.1092, 1.2667, 1.4513, 1.6684, 1.9246, 2.2280,
+                         2.5888, 3.0197, 3.5362, 4.1583, 4.9106, 5.8249, 6.9411, 8.3108,
+                         10.000, 12.094, 14.706, 17.979, 22.108, 27.348, 34.038, 42.636,
+                         53.762, 68.260, 87.285, 112.440, 145.953, 190.953 ],
+         'temperature' : [105+273, 100.0+273, 95.0+273, 90.0+273, 85.0+273, 80.0+273, 75.0+273, 70.0+273,
+                          65.0+273, 60.0+273, 55.0+273, 50.0+273, 45.0+273, 40.0+273, 35.0+273, 30.0+273,
+                          25.0+273, 20.0+273, 15.0+273, 10.0+273, 5.0+273, 0.0+273, -5.0+273, -10.0+273,
+                          -15.0+273, -20.0+273, -25.0+273, -30.0+273, -35.0+273, -40.0+273]
+     }
+
+# OZ1LQO calibrated B3470 thermister 
+OZ1LQO_const = {'resistance' : [0.94, 1.04, 1.16, 1.32, 1.52, 1.74, 2.03, 2.33, 2.71, 3.16, 3.73, 4.43, 5.2,
+                         6.2, 7.5, 9.8, 11.28, 13.5, 16.15, 18.5, 25.5],
+         'temperature' : [371, 368, 363, 358, 353, 348, 343, 338, 333, 328, 323, 318, 313, 308, 303,
+                          298, 293, 288, 283, 278, 274]
+     }
+
+thermisters = { 'B3435': B3435_const, 'OZ1LQO' : OZ1LQO_const}
 
 
 class Ntc(object):
-    """A class to work with NTC Thermistors.
-    Input, is B, Rn (resistance at Tn), Tn (normalized temperature).
-    For the B3470 Thermistor that should be B=3470, Rn=10k, Tn=298.
-    Ie. a=Ntc(3470,10,298)
-    The Class can be used with measured values (B3470 only) as well as with the
-    theoretical formulas for NTC Thermistor.
+    """A class to interpolate from NTC Thermistor Temperature vs Resistance tables.
     All temperatures are in degrees Kelvin and all resistance values are in kilo ohms"""
 
-    def __init__(self, B, Rn, Tn):
-        """initialize the NTC with the parameters
+    def __init__(self, thermister_type):
+        """initialize the thermister resistance and temperature tables for the selected type
         including results from own real life measurements of the B3470 Thermistor."""
-        self.B=float(B)
-        self.Rn=float(Rn)
-        self.Tn=float(Tn)
+
+        thermister = thermisters[thermister_type]
+        self.therm_res = thermister['resistance']
+        self.therm_temp = thermister['temperature']
               
     def __str__(self):
         """Returns the NTC's data"""
-        rep="Hi, I'm an NTC Thermistor. These are my parameters:\n"
-        rep+="B Value:"+str(self.B)+"\nNominal Value(kOhm):"+str(self.Rn)+"\nNominal Temperature(C):"+str(self.Tn-273)
+        rep="Hi, I'm an interpolated Thermistor. These are my parameters:\n"
+        #rep+="B Value:"+str(self.B)+"\nNominal Value(kOhm):"+str(self.Rn)+"\nNominal Temperature(C):"+str(self.Tn-273)
         return rep
         
 
@@ -36,13 +55,12 @@ class Ntc(object):
     @property
     def values(self):
         """method to return the current Thermostor parameters if needed"""
-        return self.B,self.Rn,self.Tn  
+        return # self.B,self.Rn,self.Tn  
 
 
     
-    def RtoT_meas(self,R=10):
-        """Returns the corresponding temperature from a measured Thermistor resistance
-        This is ONLY accurate when using the B3470 Thermistor
+    def RtoT(self,R=10):
+        """Returns the interpolated temperature from a measured Thermistor resistance
         Also, only use it within the specifies interval for R, ie. 0.94k->25.5k
         If not, the method will default at R=10"""
         
@@ -52,23 +70,16 @@ class Ntc(object):
         else:
             self.R=float(10)
             
-        #Define resistance vs. temperature arrays for the interpolate function
-        #X should always be ascending
-        res_x=[0.94, 1.04, 1.16, 1.32, 1.52, 1.74, 2.03, 2.33, 2.71, 3.16, 3.73, 4.43, 5.2,
-               6.2, 7.5, 9.8, 11.28, 13.5, 16.15, 18.5, 25.5]
-        temp_y=[371, 368, 363, 358, 353, 348, 343, 338, 333, 328, 323, 318, 313, 308, 303,
-                298, 293, 288, 283, 278, 274]
         #define the temp function, interpolated between the two arrays. Use cubic approximation
         #use scipy.interpolate.interp1d for this
-        temp=interpolate.interp1d(res_x,temp_y,kind='cubic')
+        temp=interpolate.interp1d(self.therm_res, self.therm_temp, kind='cubic')
         
         return temp(self.R)
 
 
     
-    def TtoR_meas(self,T=298):
+    def TtoR(self,T=298):
         """Returns the corresponding resistance from a temperature.
-        This is ONLY accurate when using the B3470 Thermistor.
         Also, only use it within the specifies interval for T, ie. 274->371
         If not, the method will default at T=298"""
 
@@ -78,15 +89,9 @@ class Ntc(object):
         else:
             self.T=float(298)
         
-        #Define temperature vs. resistance arrays for the interpolate function
-        #X should always be ascending
-        temp_x=[274, 278, 283, 288, 293, 298, 303, 308, 313, 318, 323, 328, 333, 338, 343,
-        348, 353, 358, 363, 368, 371]
-        res_y=[25.5, 18.5, 16.15, 13.5, 11.28, 9.8, 7.5, 6.2, 5.2, 4.43, 3.73, 3.16, 2.71,
-               2.33, 2.03, 1.74, 1.52, 1.32, 1.16, 1.04, 0.94]
         #define the temp function, interpolated between the two arrays. Use cubic approximation
         #use scipy.interpolate.interp1d for this
-        res=interpolate.interp1d(temp_x,res_y,kind='cubic')
+        res=interpolate.interp1d(self.therm_temp, self.therm_res, kind='cubic')
         
         return res(self.T)
 
@@ -94,10 +99,7 @@ class Ntc(object):
 
     def Rlin(self,T_hi=343,T_lo=298):
         """Calculates a suitable linearization resistor based on an input
-           temperature interval. Returns resistor value for:
-           R_lin_meas is based on the measured B3470 characteristic 
-           NOTE! If you're using another Thermistor than B3470,
-           R_lin_meas will be invalid."""
+           temperature interval."""
 
         T_hi=float(T_hi)
         T_lo=float(T_lo)
@@ -118,16 +120,13 @@ class Ntc(object):
 
     def measurement(self, Rlin=2, Rs=2.2, Vs=5, Vadc=2):
         """This method calculates a temperature from a setup as in the schematic and
-           presents to temperature values, one based on the measured B3470 resistor and
-           one for the modeled. It needs 4 input values:
+           presents to temperature values.  It needs 4 input values:
            1) Value of linearization resistor
            2) Value of series resistor
            3) Supply voltage
            4) Measured voltage at the ADC.
-           Note, again, that all resistors are in kOhm's and if you're using another
-           Thermistor than B3470, the Temp_meas will be invalid.
-           Otherwise there may still be some differences between the measured and the
-           calculated thermistor"""
+           Note, again, that all resistors are in kOhm's.
+        """
 
 
         Rlin=float(Rlin)
@@ -150,17 +149,28 @@ class Ntc(object):
 
         return Temp
         
-    
 
-        
-    
+if __name__ == "__main__":
 
-         
+    t_type = 'OZ1LQO'
+    t_type = 'B3435'
+    print 'Interpolated {} thermister'.format(t_type)
+    a = Ntc(t_type)
+    print ' R=27.348K(0C) = {} C'.format(a.RtoT(27.348) - 273)
+    print ' R=22.108K(5C) = {} C'.format(a.RtoT(22.108) - 273)
+    print ' R=10.000K(25C) = {} C'.format(a.RtoT(10.0) - 273)
+    print ' R=4.1583K(50C) = {} C'.format(a.RtoT(4.1583) - 273)
 
+    tmin = 10
+    tmax = 50
+    rlin_opt = a.Rlin(T_hi=273+tmax,T_lo=273+tmin)
+    print ' {} to {} C range, optimal linearity resistor = {}K'.format(tmin, tmax, rlin_opt)
+    rlin = 5.8
+    rs = 5.8
+    print ' Vadc:1.3V = {} C'.format(a.measurement(Rlin=rlin, Rs=rs, Vs=3.3, Vadc=1.3) - 273)
+    print ' Vadc:1.1V = {} C'.format(a.measurement(Rlin=rlin, Rs=rs, Vs=3.3, Vadc=1.1) - 273)
+    print ' Vadc:0.8V = {} C'.format(a.measurement(Rlin=rlin, Rs=rs, Vs=3.3, Vadc=0.8) - 273)
 
-if __name__=="__main__":
-    print """This is an NTC Thermistor library.
-You are supposed to import it and create Thermistor objects"""
 
 
     
