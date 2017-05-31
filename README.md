@@ -1,5 +1,14 @@
 NTC_Class
 =========
+Heavily refactored:
+	split into two folders, py2 and py3
+	split into two classes, modeled and interpolated
+	Added B3435 tables for interpolation.
+
+among other things this eliminates the need to install the scipy
+package when modeled results are acurate enough.
+
+(cw)
 
 A Py3 toolbox to handle NTC Thermistor measurement with an ADC.
 You'll find the library, a script to test all the functionality,
