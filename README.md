@@ -1,12 +1,15 @@
 NTC_Class
 =========
 Heavily refactored:
-	split into two folders, py2 and py3
-	split into two classes, modeled and interpolated
-	Added B3435 tables for interpolation.
+  * split into two folders: py2 and py3 (I dont use py3, so py3 folder unchanged from Soren's original code.)
+  * split into two classes: modeled and interpolated
+  * Added dictionaries for holding named tables of thermister data for interpolation.
+  * Added B3435 table.
 
 among other things this eliminates the need to install the scipy
-package when modeled results are acurate enough.
+package when modeled results are acurate enough for the job at hand.
+
+Many thanks to Soren.  My setpoint units would still be in volts without his effort.
 
 (cw)
 
