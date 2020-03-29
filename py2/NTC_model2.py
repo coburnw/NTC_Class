@@ -4,10 +4,6 @@
 #OZ1LQO 2014.05.29
 
 import math
-#from scipy import interpolate
-
-
-
 
 class Ntc(object):
     """A class to work with NTC Thermistors.
@@ -48,11 +44,13 @@ class Ntc(object):
     def RtoT(self,R=10):
         """Returns the corresponding modeled temperature from a resistance input
            Uses the parameter values given when creating the object: B, Tn, Rn"""
-        #check for valid interval
-        if R>=0.94 and R<=25.5:
-            self.R=float(R)
+        #check for gross interval
+        if R < 0.1:
+            self.R = 0.1
+        elif R > 100.0:
+            self.R = 100.0            
         else:
-            self.R=float(10)
+            self.R=float(R)
         
         return 1/((math.log(self.R/self.Rn)/self.B)+(1/self.Tn))
 
@@ -115,22 +113,28 @@ class Ntc(object):
         
     
 if __name__ == "__main__":
-
-    print 'modeled thermister'
-    a = Ntc(B=3435, Rn=10, Tn=273+25)
-    print ' R=27.348K(0C) = {} C'.format(a.RtoT(27.348) - 273)
-    print ' R=22.108K(5C) = {} C'.format(a.RtoT(22.108) - 273)
-    print ' R=10.000K(25C) = {} C'.format(a.RtoT(10.0) - 273)
-    print ' R=4.1583K(50C) = {} C'.format(a.RtoT(4.1583) - 273)
+    B = 3435
+    Rn = 10 #K
+    Tn = 25 #C
+    print('modeled thermister: B25/85={}, Rn={}K, Tn={}degC'.format(B,Rn, Tn))
+    
+    a = Ntc(B=B, Rn=Rn, Tn=273+Tn)
+    print(' R=27.348K(0C) = {} C'.format(a.RtoT(27.348) - 273))
+    print(' R=22.108K(5C) = {} C'.format(a.RtoT(22.108) - 273))
+    print(' R=10.000K(25C) = {} C'.format(a.RtoT(10.0) - 273))
+    print(' R=4.1583K(50C) = {} C'.format(a.RtoT(4.1583) - 273))
 
     tmin = 10
     tmax = 50
     rlin_opt = a.Rlin(T_hi=273+tmax,T_lo=273+tmin)
-    print ' {} to {} C range, optimal linearity resistor = {}K'.format(tmin, tmax, rlin_opt)
     rlin = 5.8
-    rs = 5.8
-    print ' Vadc:1.3V = {} C'.format(a.measurement(Rlin=rlin, Rs=rs, Vs=3.3, Vadc=1.3) - 273)
-    print ' Vadc:1.1V = {} C'.format(a.measurement(Rlin=rlin, Rs=rs, Vs=3.3, Vadc=1.1) - 273)
-    print ' Vadc:0.8V = {} C'.format(a.measurement(Rlin=rlin, Rs=rs, Vs=3.3, Vadc=0.8) - 273)
-
+    print(' {} to {} C range, optimal linearity resistor = {}K'.format(tmin, tmax, rlin_opt))
+    
+    vs = 1.5
+    rs = 20
+    print('Rs = {}k, rlin = {}k'.format(rs, rlin))
+    for vadc in range(0, 20):
+        vadc = vadc/50
+        t = a.measurement(Rlin=rlin, Rs=rs, Vs=vs, Vadc=vadc) - 273
+        print(' Vadc:{}V = {} C'.format(vadc, t))
 
